@@ -1,12 +1,10 @@
 package com.example.mark.mysunshine;
 
-import android.app.AlarmManager;
-import android.app.PendingIntent;
-import android.content.Context;
-import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -14,7 +12,6 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
 import android.widget.ListView;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.LoaderManager;
@@ -24,16 +21,16 @@ import android.widget.TextView;
 
 import com.example.mark.mysunshine.data.WeatherContract;
 import com.example.mark.mysunshine.sync.SyncAdapter;
-import com.example.mark.mysunshine.sync.SyncService;
 
 public class ForecastFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>{
 
     private static final int FORECAST_LOADER=0;
     private static final String SELECETED_KEY = "currPosition";
-    private ForecastAdapter mForecastAdapter;
-    private int mPosition=-1;
 
-    private ListView listView;
+    private ForecastAdapter mForecastAdapter;
+    private int mPosition=RecyclerView.NO_POSITION;
+    private RecyclerView recyclerView;
+    private TextView tv;
 
     private static final String[] FORECAST_COLUMNS = {
             WeatherContract.WeatherEntry.TABLE_NAME + "." + WeatherContract.WeatherEntry._ID,
@@ -99,24 +96,21 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState){
-        mForecastAdapter = new ForecastAdapter(getActivity(), null, 0);
-        mForecastAdapter.isTwoPane(mTwoPane);
-        View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-        listView = (ListView) rootView.findViewById(R.id.listview_forecast);
-        listView.setAdapter(mForecastAdapter);
-
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        mForecastAdapter = new ForecastAdapter(getActivity(), new ForecastAdapter.OnClickHandler() {
             @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int position, long l) {
-                Cursor cursor = (Cursor) adapterView.getItemAtPosition(position);
-                if (cursor != null) {
-                    String locationSetting = Utility.getPreferredLocation(getActivity());
-                    ((Callback)getActivity()).onItemSelected(WeatherContract.WeatherEntry.buildWeatherLocationWithDate(
-                       locationSetting,cursor.getLong(COL_WEATHER_DATE)));
-                }
-                mPosition=position;
+            public void onClick(Long date,ForecastAdapter.ViewHolder holder) {
+                String locationSetting=Utility.getPreferredLocation(getActivity());
+                ((Callback)getActivity()).onItemSelected(WeatherContract.WeatherEntry.buildWeatherLocationWithDate(
+                        locationSetting,date));
+                mPosition=holder.getAdapterPosition();
             }
         });
+        mForecastAdapter.isTwoPane(mTwoPane);
+        View rootView = inflater.inflate(R.layout.fragment_main, container, false);
+        recyclerView = (RecyclerView) rootView.findViewById(R.id.recyclerview_forecast);
+        recyclerView.setLayoutManager(new LinearLayoutManager(getActivity()));
+        recyclerView.setAdapter(mForecastAdapter);
+        tv= (TextView) rootView.findViewById(R.id.listview_forecast_empty);
         if(savedInstanceState!=null&&savedInstanceState.containsKey(SELECETED_KEY)){
             mPosition=savedInstanceState.getInt(SELECETED_KEY);
         }
@@ -141,13 +135,6 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
         updateWeather();
     }
 
-    /**
-     * Instantiate and return a new Loader for the given ID.
-     *
-     * @param id   The ID whose loader is to be created.
-     * @param args Any arguments supplied by the caller.
-     * @return Return a new Loader instance that is ready to start loading.
-     */
     @Override
     public Loader<Cursor> onCreateLoader(int id, Bundle args) {
         String locationSetting=Utility.getPreferredLocation(getActivity());
@@ -157,17 +144,16 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     }
     @Override
     public void onLoadFinished(Loader<Cursor> loader, Cursor cursor) {
-        Log.d("Cursor",""+cursor.getPosition());
+        tv.setVisibility(View.GONE);
         mForecastAdapter.swapCursor(cursor);
-        if(mPosition!=ListView.INVALID_POSITION){
-            listView.smoothScrollToPosition(mPosition);
+        if(mPosition!=RecyclerView.NO_POSITION){
+            recyclerView.smoothScrollToPosition(mPosition);
+        }else {
+            updateEmptyView();
         }
-        updateEmptyView();
     }
-
     private void updateEmptyView() {
-        if(mForecastAdapter.getCount()==0){
-            TextView tv= (TextView) getView().findViewById(R.id.listview_forecast_empty);
+        if(mForecastAdapter.getItemCount()==0){
             if(tv!=null){
                 if(!Utility.isNetworkAvailable(getActivity())){
                     tv.setText(getString(R.string.empty_forecast_list_no_connection));
@@ -175,16 +161,9 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
                     tv.setText(getString(R.string.empty_forecast_list));
                 }
             }
+            tv.setVisibility(View.VISIBLE);
         }
     }
-
-    /**
-     * Called when a previously created loader is being reset, and thus
-     * making its data unavailable.  The application should at this point
-     * remove any references it has to the Loader's data.
-     *
-     * @param loader The Loader that is being reset.
-     */
     @Override
     public void onLoaderReset(Loader<Cursor> loader) {
         mForecastAdapter.swapCursor(null);

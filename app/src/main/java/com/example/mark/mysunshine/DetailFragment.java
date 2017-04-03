@@ -25,6 +25,7 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
     //share option not working
 
     private String forecastStr;
+    private boolean mTwoPane;
     static final String DETAIL_URI = "URI";
     private static final int DETAIL_LOADER=0;
     private static final String[] DETAIL_COLUMNS={
@@ -55,7 +56,7 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
     private ShareActionProvider mShareActionProvider;
 
     private ImageView iconView;
-    private TextView dateView,friendlyDateView,descriptionView,highTempView,lowTempView,humidityView,windView,pressureView;
+    private TextView dateView,descriptionView,highTempView,lowTempView,humidityView,windView,pressureView,friendlyDateView;
     private Uri mUri;
 
     public DetailFragment() {
@@ -76,7 +77,7 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
 
     private Intent createShareForecastIntent(){
         Intent shareIntent=new Intent(Intent.ACTION_SEND);
-        //shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
+        shareIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
         shareIntent.setType("text/plain");
         shareIntent.putExtra(Intent.EXTRA_TEXT,forecastStr);
         return shareIntent;
@@ -104,21 +105,25 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
         Bundle arguments=getArguments();
         if(arguments!=null){
             mUri=arguments.getParcelable(DetailFragment.DETAIL_URI);
+            mTwoPane=true;
         }
         if(getActivity().getIntent()!=null&&getActivity().getIntent().getData()!=null){
             mUri=getActivity().getIntent().getData();
+            mTwoPane=false;
         }
         // Inflate the layout for this fragment
         View rootView= inflater.inflate(R.layout.fragment_detail, container, false);
         iconView= (ImageView) rootView.findViewById(R.id.detail_icon);
         dateView= (TextView) rootView.findViewById(R.id.detail_date_textview);
-        friendlyDateView= (TextView) rootView.findViewById(R.id.detail_day_textview);
         descriptionView= (TextView) rootView.findViewById(R.id.detail_forecast_textview);
         highTempView= (TextView) rootView.findViewById(R.id.detail_high_textview);
         lowTempView= (TextView) rootView.findViewById(R.id.detail_low_textview);
         humidityView= (TextView) rootView.findViewById(R.id.detail_humidity_textview);
         windView= (TextView) rootView.findViewById(R.id.detail_wind_textview);
         pressureView= (TextView) rootView.findViewById(R.id.detail_pressure_textview);
+        if(mTwoPane){
+            friendlyDateView= (TextView) rootView.findViewById(R.id.detail_day_textview);
+        }
         return rootView;
     }
 
@@ -139,8 +144,12 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
             long date = data.getLong(COL_WEATHER_DATE);
             String friendlyDateText = Utility.getDayName(getActivity(), date);
             String dateText = Utility.getFormattedMonthDay(getActivity(), date);
-            friendlyDateView.setText(friendlyDateText);
-            dateView.setText(dateText);
+            if(mTwoPane){
+                dateView.setText(dateText);
+                friendlyDateView.setText(friendlyDateText);
+            }else {
+                dateView.setText(friendlyDateText + " , " + dateText);
+            }
 
             String weatherDescription = data.getString(COL_SHORT_DESC);
             descriptionView.setText(weatherDescription);

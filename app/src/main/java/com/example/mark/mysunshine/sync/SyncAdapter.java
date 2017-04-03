@@ -16,14 +16,12 @@ import android.content.SyncRequest;
 import android.content.SyncResult;
 import android.content.res.Resources;
 import android.database.Cursor;
-import android.database.DatabaseUtils;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
-import android.support.annotation.IntDef;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.text.format.Time;
@@ -42,8 +40,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Vector;
@@ -53,7 +49,6 @@ import java.util.Vector;
  */
 
 public class SyncAdapter extends AbstractThreadedSyncAdapter {
-
     private String LOG_TAG=SyncAdapter.class.getSimpleName();
 
     // Interval at which to sync with the weather, in milliseconds.
@@ -77,43 +72,46 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
     private static final long DAY_IN_MILLIS = 1000 * 60 * 60 * 24;
     private static final int WEATHER_NOTIFICATION_ID = 3004;
 
-    private ContentResolver mContentResolver;
+    //private ContentResolver mContentResolver;
+    private Context mContext;
 
     public SyncAdapter(Context context, boolean autoInitialize) {
         super(context, autoInitialize);
-        mContentResolver=context.getContentResolver();
+        //mContentResolver=context.getContentResolver();
+        mContext=context;
     }
 
     public SyncAdapter(Context context, boolean autoInitialize, boolean allowParallelSyncs){
         super(context,autoInitialize,allowParallelSyncs);
-        mContentResolver=context.getContentResolver();
+        //mContentResolver=context.getContentResolver();
+        mContext=context;
     }
 
     @Override
     public void onPerformSync(Account account, Bundle bundle, String s, ContentProviderClient contentProviderClient, SyncResult syncResult) {
         Log.d(LOG_TAG,"Starting Sync Adapter");
-        String locationQuery = Utility.getPreferredLocation(getContext());
         HttpURLConnection urlConnection = null;
+        String locationQuery=Utility.getPreferredLocation(mContext);
         BufferedReader reader = null;
         String forecastJsonStr;
 
         String format = "json";
         String units = "metric";
         int numDays = 14;
-        String appid="";//appid can be obtained from openweathermap
+        String appId="";//appid can be obtained from the website
         try {
-            final String FORECAST_BASE_URL ="https://openweathermap.org/data/2.5/forecast/daily?";
+            final String FORECAST_BASE_URL ="http://api.openweathermap.org/data/2.5/forecast/daily?";
             final String QUERY_PARAM = "q";
             final String FORMAT_PARAM = "mode";
             final String UNITS_PARAM = "units";
             final String DAYS_PARAM = "cnt";
             final String APPID_PARAM="appid";
             /**
-             * https://openweathermap.org/data/2.5/forecast/daily?
-             * q=Mumbai&
-             * mode=json&
-             * units=metric&
-             * cnt=14&
+             * http://api.openweathermap.org/data/2.5/forecast/daily?
+             * q=Mumbai
+             * &mode=json
+             * &units=metric
+             * &cnt=14&
              * appid=
              **/
             Uri builtUri = Uri.parse(FORECAST_BASE_URL).buildUpon()
@@ -125,6 +123,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                     .build();
 
             URL url = new URL(builtUri.toString());
+            Log.d(LOG_TAG,url.toString());
             urlConnection = (HttpURLConnection) url.openConnection();
             urlConnection.setRequestMethod("GET");
             urlConnection.connect();
@@ -162,8 +161,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         }
     }
 
-    private void getWeatherDataFromJson(String forecastJsonStr,
-                                        String locationSetting)
+    private void getWeatherDataFromJson(String forecastJsonStr, String locationSetting)
             throws JSONException {
 
         // Now we have a String representing the complete forecast in JSON Format.
@@ -290,16 +288,16 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             if ( cVVector.size() > 0 ) {
                 ContentValues[] cvArray = new ContentValues[cVVector.size()];
                 cVVector.toArray(cvArray);
-                getContext().getContentResolver().bulkInsert(WeatherContract.WeatherEntry.CONTENT_URI, cvArray);
+                mContext.getContentResolver().bulkInsert(WeatherContract.WeatherEntry.CONTENT_URI, cvArray);
 
                 // delete old data so we don't build up an endless history
-                getContext().getContentResolver().delete(WeatherContract.WeatherEntry.CONTENT_URI,
+                mContext.getContentResolver().delete(WeatherContract.WeatherEntry.CONTENT_URI,
                         WeatherContract.WeatherEntry.COLUMN_DATE + " <= ?",
                         new String[] {Long.toString(dayTime.setJulianDay(julianStartDay-1))});
 
                 notifyWeather();
             }
-
+            Log.d(LOG_TAG,forecastJsonStr);
             Log.d(LOG_TAG, "Sync Complete. " + cVVector.size() + " Inserted");
 
         } catch (JSONException e) {
@@ -309,7 +307,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
     }
 
     private void notifyWeather() {
-        Context context = getContext();
+        Context context = mContext;
         //checking the last update and notify if it' the first of the day
         SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
         String displayNotificationsKey = context.getString(R.string.pref_enable_notifications_key);
@@ -351,8 +349,8 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                     // NotificationCompatBuilder is a very convenient way to build backward-compatible
                     // notifications.  Just throw in some data.
                     NotificationCompat.Builder mBuilder =
-                            new NotificationCompat.Builder(getContext())
-                                    .setColor(resources.getColor(R.color.sunshine_light_blue))
+                            new NotificationCompat.Builder(mContext)
+                                    .setColor(resources.getColor(R.color.colorPrimaryLight))
                                     .setSmallIcon(iconId)
                                     .setLargeIcon(largeIcon)
                                     .setContentTitle(title)
@@ -376,7 +374,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                     mBuilder.setContentIntent(resultPendingIntent);
 
                     NotificationManager mNotificationManager =
-                            (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+                            (NotificationManager) mContext.getSystemService(Context.NOTIFICATION_SERVICE);
                     // WEATHER_NOTIFICATION_ID allows you to update the notification later on.
                     mNotificationManager.notify(WEATHER_NOTIFICATION_ID, mBuilder.build());
 
@@ -403,7 +401,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         long locationId;
 
         // First, check if the location with this city name exists in the db
-        Cursor locationCursor = getContext().getContentResolver().query(
+        Cursor locationCursor = mContext.getContentResolver().query(
                 WeatherContract.LocationEntry.CONTENT_URI,
                 new String[]{WeatherContract.LocationEntry._ID},
                 WeatherContract.LocationEntry.COLUMN_LOCATION_SETTING + " = ?",
@@ -426,7 +424,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             locationValues.put(WeatherContract.LocationEntry.COLUMN_COORD_LONG, lon);
 
             // Finally, insert location data into the database.
-            Uri insertedUri = getContext().getContentResolver().insert(
+            Uri insertedUri = mContext.getContentResolver().insert(
                     WeatherContract.LocationEntry.CONTENT_URI,
                     locationValues
             );
@@ -492,7 +490,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         if ( null == accountManager.getPassword(newAccount) ) {
 
         /*
-         * Add the account and account type, no password or user data
+         * Add the account and account type,no password or user data
          * If successful, return the Account object, otherwise report an error.
          */
             if (!accountManager.addAccountExplicitly(newAccount, "", null)) {
@@ -531,16 +529,4 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         getSyncAccount(context);
     }
 
-    @Retention(RetentionPolicy.SOURCE)
-    @IntDef({LOCATION_STATUS_OK,LOCATION_STATUS_SERVER_DOWN,LOCATION_STATUS_SERVER_INVALID,LOCATION_STATUS_SERVER_UNKNOWN})
-    public @interface LocationStatus{}
-    public static final int LOCATION_STATUS_OK=0;
-    public static final int LOCATION_STATUS_SERVER_DOWN=1;
-    public static final int LOCATION_STATUS_SERVER_INVALID=2;
-    public static final int LOCATION_STATUS_SERVER_UNKNOWN=3;
-
-
-    private static void setLocationStatus(Context context,int locationStatus){
-
-    }
 }

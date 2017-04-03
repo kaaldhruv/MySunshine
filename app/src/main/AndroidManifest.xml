@@ -53,7 +53,6 @@
         </service>
         <service android:name=".sync.SyncService"
             android:exported="true">
-            <!-- process attribute should only be used if we want this service to run in a different process-->
             <intent-filter>
                 <action android:name="android.content.SyncAdapter"/>
             </intent-filter>

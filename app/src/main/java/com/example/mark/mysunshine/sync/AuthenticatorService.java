@@ -4,6 +4,8 @@ import android.app.Service;
 import android.content.Intent;
 import android.os.IBinder;
 
+import com.example.mark.mysunshine.sync.Authenticator;
+
 /**
  * Created by Sril Kunal on 31-03-2017.
  */

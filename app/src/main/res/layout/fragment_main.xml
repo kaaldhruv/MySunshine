@@ -5,12 +5,12 @@
     android:layout_height="match_parent"
     tools:context="com.example.mark.mysunshine.ForecastFragment">
 
-    <ListView
-        android:divider="@null"
+    <android.support.v7.widget.RecyclerView
         style="@style/ForecastListStyle"
-        android:id="@+id/listview_forecast" />
+        android:id="@+id/recyclerview_forecast" />
 
     <TextView
+        android:visibility="gone"
         android:textStyle="bold"
         android:id="@+id/listview_forecast_empty"
         android:layout_width="match_parent"

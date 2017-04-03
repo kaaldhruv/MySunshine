@@ -11,6 +11,7 @@ import android.preference.Preference;
 import android.preference.PreferenceFragment;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
+import android.util.Log;
 
 public class SettingsActivity extends Activity {
 
@@ -28,6 +29,8 @@ public class SettingsActivity extends Activity {
 
     public static class SettingsFragment extends PreferenceFragment implements Preference.OnPreferenceChangeListener {
 
+        private static final Object lock=new Object();
+
         @Override
         public void onCreate(Bundle savedInstanceState) {
             super.onCreate(savedInstanceState);
@@ -40,21 +43,23 @@ public class SettingsActivity extends Activity {
 
         private void bindPreferenceSummaryToValue(Preference preference) {
             // Set the listener to watch for value changes.
-            preference.setOnPreferenceChangeListener(this);
+            synchronized (lock) {
+                preference.setOnPreferenceChangeListener(this);
 
-            // Trigger the listener immediately with the preference's
-            // current value.
-            onPreferenceChange(preference,
-                    PreferenceManager
-                            .getDefaultSharedPreferences(preference.getContext())
-                            .getString(preference.getKey(), ""));
+                // Trigger the listener immediately with the preference's
+                // current value.
+                onPreferenceChange(preference,
+                        PreferenceManager
+                                .getDefaultSharedPreferences(preference.getContext())
+                                .getString(preference.getKey(), ""));
+            }
         }
 
 
         @Override
         public boolean onPreferenceChange(Preference preference, Object value) {
             String stringValue = value.toString();
-
+            Log.d("onPreference",stringValue);
             if (preference instanceof ListPreference) {
                 // For list preferences, look up the correct display value in
                 // the preference's 'entries' list (since they have separate labels/values).

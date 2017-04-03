@@ -5,6 +5,8 @@ import android.content.Intent;
 import android.os.IBinder;
 import android.util.Log;
 
+import com.example.mark.mysunshine.sync.SyncAdapter;
+
 /**
  * Created by Sril Kunal on 31-03-2017.
  */
@@ -19,7 +21,7 @@ public class SyncService extends Service {
         Log.d("SyncService","SyncService on create");
         synchronized (syncAdapterLock){
             if(mSyncAdapter==null){
-                mSyncAdapter=new SyncAdapter(getApplicationContext(),true);
+                mSyncAdapter=new SyncAdapter(this,true);
             }
         }
     }
