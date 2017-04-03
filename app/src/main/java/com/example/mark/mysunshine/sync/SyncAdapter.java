@@ -100,7 +100,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         String format = "json";
         String units = "metric";
         int numDays = 14;
-        String appId="b1b15e88fa797225412429c1c50c122a1";
+        String appid="";//appid can be obtained from openweathermap
         try {
             final String FORECAST_BASE_URL ="https://openweathermap.org/data/2.5/forecast/daily?";
             final String QUERY_PARAM = "q";
@@ -114,7 +114,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
              * mode=json&
              * units=metric&
              * cnt=14&
-             * appid=b1b15e88fa797225412429c1c50c122a1
+             * appid=
              **/
             Uri builtUri = Uri.parse(FORECAST_BASE_URL).buildUpon()
                     .appendQueryParameter(QUERY_PARAM, locationQuery)
